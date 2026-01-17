@@ -1,9 +1,14 @@
 
 import React, { useState } from 'react';
-import { StudyMap, StudyStep } from '../types';
+import { StudyMap, StudyStep, StudyEvent } from '../types';
 import { generateStudyMap } from '../services/geminiService';
 
-const StudyMapTool: React.FC = () => {
+interface StudyMapToolProps {
+  onMilestoneAchieved?: (milestoneTitle: string) => void;
+  onScheduleMilestone?: (event: StudyEvent) => void;
+}
+
+const StudyMapTool: React.FC<StudyMapToolProps> = ({ onMilestoneAchieved, onScheduleMilestone }) => {
   const [goal, setGoal] = useState('');
   const [material, setMaterial] = useState('');
   const [map, setMap] = useState<StudyMap | null>(null);
@@ -26,9 +31,29 @@ const StudyMapTool: React.FC = () => {
 
   const toggleStep = (index: number) => {
     const next = new Set(completedSteps);
-    if (next.has(index)) next.delete(index);
-    else next.add(index);
+    if (!next.has(index)) {
+      next.add(index);
+      if (onMilestoneAchieved && map) {
+        onMilestoneAchieved(map.milestones[index].title);
+      }
+    } else {
+      next.delete(index);
+    }
     setCompletedSteps(next);
+  };
+
+  const scheduleMilestone = (step: StudyStep) => {
+    if (!onScheduleMilestone) return;
+    const dateInput = prompt("Enter target date (YYYY-MM-DD):", new Date().toISOString().split('T')[0]);
+    if (dateInput) {
+      onScheduleMilestone({
+        id: Math.random().toString(36).substr(2, 9),
+        title: step.title,
+        date: dateInput,
+        type: 'milestone',
+        description: step.description
+      });
+    }
   };
 
   return (
@@ -76,7 +101,6 @@ const StudyMapTool: React.FC = () => {
             {map.goal}
           </h4>
 
-          {/* Vertical Line */}
           <div className="absolute left-[15px] top-12 bottom-0 w-0.5 bg-gradient-to-b from-blue-500 via-indigo-500 to-slate-800 border-l border-dashed border-white/10"></div>
 
           <div className="space-y-12">
@@ -84,7 +108,6 @@ const StudyMapTool: React.FC = () => {
               const isCompleted = completedSteps.has(idx);
               return (
                 <div key={idx} className="relative group">
-                  {/* Milestone Node */}
                   <div 
                     onClick={() => toggleStep(idx)}
                     className={`absolute -left-[41px] top-0 w-8 h-8 rounded-full border-2 flex items-center justify-center cursor-pointer transition-all duration-500 z-10 ${
@@ -100,9 +123,8 @@ const StudyMapTool: React.FC = () => {
                     )}
                   </div>
 
-                  {/* Content Card */}
                   <div 
-                    className={`glass rounded-2xl p-6 transition-all duration-300 border-l-4 cursor-pointer ${
+                    className={`glass rounded-2xl p-6 transition-all duration-300 border-l-4 cursor-pointer relative ${
                       isCompleted ? 'border-blue-500 bg-blue-500/5 opacity-60' : 'border-slate-700 hover:border-blue-500/50 bg-white/5'
                     }`}
                     onClick={() => toggleStep(idx)}
@@ -111,9 +133,19 @@ const StudyMapTool: React.FC = () => {
                       <h5 className={`font-bold text-lg ${isCompleted ? 'text-slate-400 line-through' : 'text-white'}`}>
                         {step.title}
                       </h5>
-                      <span className="text-[10px] bg-slate-800 text-slate-400 px-2 py-1 rounded-md border border-white/5 font-bold">
-                        {step.estimatedHours}h EST
-                      </span>
+                      <div className="flex space-x-2">
+                        {!isCompleted && (
+                          <button 
+                            onClick={(e) => { e.stopPropagation(); scheduleMilestone(step); }}
+                            className="text-[10px] bg-indigo-500/20 text-indigo-400 px-2 py-1 rounded-md border border-indigo-500/30 font-bold hover:bg-indigo-500/30 transition-colors"
+                          >
+                            <i className="fas fa-calendar-plus mr-1"></i> Schedule
+                          </button>
+                        )}
+                        <span className="text-[10px] bg-slate-800 text-slate-400 px-2 py-1 rounded-md border border-white/5 font-bold">
+                          {step.estimatedHours}h EST
+                        </span>
+                      </div>
                     </div>
                     <p className="text-sm text-slate-400 leading-relaxed">
                       {step.description}
@@ -123,7 +155,6 @@ const StudyMapTool: React.FC = () => {
               );
             })}
 
-            {/* Finish Node */}
             <div className="relative">
               <div className="absolute -left-[41px] top-0 w-8 h-8 rounded-full bg-slate-900 border-2 border-slate-700 flex items-center justify-center">
                 <i className="fas fa-trophy text-slate-700 text-xs"></i>

@@ -36,6 +36,14 @@ export interface StudyMap {
   milestones: StudyStep[];
 }
 
+export interface StudyEvent {
+  id: string;
+  title: string;
+  date: string; // ISO Date string (YYYY-MM-DD)
+  type: 'session' | 'deadline' | 'milestone';
+  description?: string;
+}
+
 export interface StudySession {
   id: string;
   startTime: number;
@@ -60,6 +68,14 @@ export interface UserStats {
   streak: number;
   lastActiveDay?: string; // ISO date
   unlockedBadges: string[]; // Badge IDs
+}
+
+export interface AppNotification {
+  id: string;
+  title: string;
+  message: string;
+  type: 'info' | 'success' | 'warning' | 'achievement';
+  icon: string;
 }
 
 export type PomodoroPhase = 'work' | 'break';
