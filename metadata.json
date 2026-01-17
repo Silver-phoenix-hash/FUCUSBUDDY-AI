@@ -1,0 +1,8 @@
+{
+  "name": "FocusBuddy AI",
+  "description": "An intelligent study companion that uses AI to quiz you, explain complex topics, and keeps you accountable with a full-screen focus mode and live voice interaction.",
+  "requestFramePermissions": [
+    "camera",
+    "microphone"
+  ]
+}
