@@ -25,6 +25,17 @@ export interface SummaryResult {
   keyPoints: string[];
 }
 
+export interface StudyStep {
+  title: string;
+  description: string;
+  estimatedHours: number;
+}
+
+export interface StudyMap {
+  goal: string;
+  milestones: StudyStep[];
+}
+
 export interface StudySession {
   id: string;
   startTime: number;

@@ -20,7 +20,6 @@ export const getGeminiResponse = async (
     topP: 0.9,
   };
 
-  // Adjust model and config based on options
   if (options.useThinking) {
     model = 'gemini-3-pro-preview';
     config.thinkingConfig = { thinkingBudget: 32768 };
@@ -28,7 +27,6 @@ export const getGeminiResponse = async (
     config.tools = [{ googleSearch: {} }];
   }
 
-  // Define Persona System Instructions
   const personas: Record<string, string> = {
     'Standard': "You are FocusBuddy, a world-class AI study companion. Be helpful, clear, and encouraging.",
     'Socratic': "You are a Socratic tutor. Never give direct answers immediately. Instead, ask leading questions to help the student find the answer themselves.",
@@ -45,7 +43,6 @@ export const getGeminiResponse = async (
     config,
   });
 
-  // Extract grounding URLs if present
   const sources = response.candidates?.[0]?.groundingMetadata?.groundingChunks
     ?.filter((chunk: any) => chunk.web)
     ?.map((chunk: any) => ({
@@ -57,6 +54,40 @@ export const getGeminiResponse = async (
     text: response.text || '',
     sources
   };
+};
+
+export const generateStudyMap = async (goal: string, material: string) => {
+  const ai = new GoogleGenAI({ apiKey: API_KEY });
+  const model = 'gemini-3-flash-preview';
+
+  const response = await ai.models.generateContent({
+    model,
+    contents: `Based on the goal: "${goal}" and the following study material, create a logical, step-by-step Study Map. \n\nMaterial: ${material}`,
+    config: {
+      responseMimeType: "application/json",
+      responseSchema: {
+        type: Type.OBJECT,
+        properties: {
+          goal: { type: Type.STRING },
+          milestones: {
+            type: Type.ARRAY,
+            items: {
+              type: Type.OBJECT,
+              properties: {
+                title: { type: Type.STRING },
+                description: { type: Type.STRING },
+                estimatedHours: { type: Type.NUMBER }
+              },
+              required: ["title", "description", "estimatedHours"]
+            }
+          }
+        },
+        required: ["goal", "milestones"]
+      }
+    }
+  });
+
+  return JSON.parse(response.text);
 };
 
 export const generateFlashcards = async (input: string) => {

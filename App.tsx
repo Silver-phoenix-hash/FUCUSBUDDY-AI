@@ -7,9 +7,10 @@ import TaskList from './components/TaskList';
 import FlashcardTools from './components/FlashcardTools';
 import SummaryTool from './components/SummaryTool';
 import DistractionList from './components/DistractionList';
+import StudyMapTool from './components/StudyMapTool';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 
-type StudyTab = 'timer' | 'flashcards' | 'summary' | 'blocking';
+type StudyTab = 'timer' | 'flashcards' | 'summary' | 'roadmap' | 'blocking';
 
 const App: React.FC = () => {
   const [mode, setMode] = useState<AppMode>(AppMode.DASHBOARD);
@@ -53,7 +54,6 @@ const App: React.FC = () => {
     }
   };
 
-  // Visibility monitoring for "App Blocking" simulation
   useEffect(() => {
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'hidden' && isLocked && pomodoroPhase === 'work' && isTimerActive) {
@@ -217,27 +217,26 @@ const App: React.FC = () => {
                 </div>
 
                 <div className="glass rounded-3xl p-6 relative overflow-hidden group">
-                  <div className="absolute top-0 right-0 w-32 h-32 bg-red-500/10 rounded-full blur-3xl -mr-16 -mt-16 transition-all group-hover:bg-red-500/20"></div>
-                  <h3 className="font-bold text-lg mb-4">Distraction Blocker</h3>
+                  <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/10 rounded-full blur-3xl -mr-16 -mt-16 transition-all group-hover:bg-blue-500/20"></div>
+                  <h3 className="font-bold text-lg mb-4 text-blue-400">Study Roadmap</h3>
                   <p className="text-slate-300 text-sm leading-relaxed mb-4">
-                    Currently blocking <strong>{blacklist.length}</strong> distractions. Locked focus mode will track every time you leave the app.
+                    Turn your goal and materials into a visual journey. Gemini will chart your path to mastery.
                   </p>
-                  <button onClick={() => {setMode(AppMode.STUDYING); setStudyTab('blocking');}} className="text-red-400 text-sm font-bold flex items-center hover:text-red-300 transition-colors">
-                    Manage Blacklist <i className="fas fa-arrow-right ml-2"></i>
+                  <button onClick={() => {setMode(AppMode.STUDYING); setStudyTab('roadmap');}} className="text-blue-400 text-sm font-bold flex items-center hover:text-blue-300 transition-colors">
+                    Start Mapping <i className="fas fa-arrow-right ml-2"></i>
                   </button>
                 </div>
               </div>
             </>
           ) : (
             <div className="flex flex-col h-full space-y-6">
-              {/* Study Mode Navigation */}
               {!isLocked && (
-                <div className="flex space-x-4 border-b border-white/5 pb-2">
-                  {(['timer', 'flashcards', 'summary', 'blocking'] as StudyTab[]).map(tab => (
+                <div className="flex space-x-4 border-b border-white/5 pb-2 overflow-x-auto no-scrollbar">
+                  {(['timer', 'roadmap', 'flashcards', 'summary', 'blocking'] as StudyTab[]).map(tab => (
                     <button
                       key={tab}
                       onClick={() => setStudyTab(tab)}
-                      className={`pb-2 px-1 text-sm font-bold capitalize transition-all border-b-2 ${
+                      className={`pb-2 px-1 text-sm font-bold capitalize transition-all border-b-2 whitespace-nowrap ${
                         studyTab === tab ? 'text-blue-400 border-blue-400' : 'text-slate-500 border-transparent hover:text-slate-300'
                       }`}
                     >
@@ -315,6 +314,7 @@ const App: React.FC = () => {
 
               {studyTab === 'flashcards' && <FlashcardTools />}
               {studyTab === 'summary' && <SummaryTool />}
+              {studyTab === 'roadmap' && <StudyMapTool />}
               {studyTab === 'blocking' && <DistractionList blacklist={blacklist} setBlacklist={setBlacklist} />}
             </div>
           )}
