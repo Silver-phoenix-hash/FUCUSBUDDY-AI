@@ -46,6 +46,22 @@ export interface StudySession {
   subject: string;
 }
 
+export interface Badge {
+  id: string;
+  name: string;
+  description: string;
+  icon: string;
+  color: string;
+  unlocked: boolean;
+}
+
+export interface UserStats {
+  totalPoints: number;
+  streak: number;
+  lastActiveDay?: string; // ISO date
+  unlockedBadges: string[]; // Badge IDs
+}
+
 export type PomodoroPhase = 'work' | 'break';
 
 export type AIPersona = 'Standard' | 'Socratic' | 'Strict Coach' | 'Supportive';

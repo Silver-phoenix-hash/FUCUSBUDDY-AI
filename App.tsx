@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { AppMode, Task, StudySession, PomodoroPhase } from './types';
+import { AppMode, Task, StudySession, PomodoroPhase, UserStats, Badge } from './types';
 import FocusTimer from './components/FocusTimer';
 import ChatWindow from './components/ChatWindow';
 import TaskList from './components/TaskList';
@@ -8,9 +8,21 @@ import FlashcardTools from './components/FlashcardTools';
 import SummaryTool from './components/SummaryTool';
 import DistractionList from './components/DistractionList';
 import StudyMapTool from './components/StudyMapTool';
+import BadgeGallery from './components/BadgeGallery';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 
 type StudyTab = 'timer' | 'flashcards' | 'summary' | 'roadmap' | 'blocking';
+
+const INITIAL_BADGES: Badge[] = [
+  { id: 'first_step', name: 'First Step', description: 'Complete your first study session', icon: 'fa-shoe-prints', color: 'bg-blue-500 text-white', unlocked: false },
+  { id: 'focus_king', name: 'Focus King', description: 'Perfect session with 0 distractions', icon: 'fa-crown', color: 'bg-yellow-500 text-white', unlocked: false },
+  { id: 'century', name: 'Century Club', description: 'Earn 100 Focus Points', icon: 'fa-hundred-points', color: 'bg-indigo-500 text-white', unlocked: false },
+  { id: 'streak_3', name: 'On Fire', description: 'Maintain a 3-day study streak', icon: 'fa-fire', color: 'bg-orange-500 text-white', unlocked: false },
+  { id: 'marathon', name: 'Marathoner', description: 'Complete a 60-min session', icon: 'fa-bolt', color: 'bg-purple-500 text-white', unlocked: false },
+  { id: 'polymath', name: 'Polymath', description: 'Create a study roadmap', icon: 'fa-brain', color: 'bg-green-500 text-white', unlocked: false },
+  { id: 'task_master', name: 'Task Master', description: 'Complete 5 goals in one session', icon: 'fa-check-double', color: 'bg-pink-500 text-white', unlocked: false },
+  { id: 'zen', name: 'Zen Master', description: 'Complete a session with Supportive AI', icon: 'fa-om', color: 'bg-teal-500 text-white', unlocked: false },
+];
 
 const App: React.FC = () => {
   const [mode, setMode] = useState<AppMode>(AppMode.DASHBOARD);
@@ -24,6 +36,23 @@ const App: React.FC = () => {
   const [isLocked, setIsLocked] = useState(false);
   const [blacklist, setBlacklist] = useState<string[]>(['Instagram', 'TikTok', 'YouTube']);
   const [distractionCount, setDistractionCount] = useState(0);
+  
+  // Gamification State
+  const [stats, setStats] = useState<UserStats>(() => {
+    const saved = localStorage.getItem('focusbuddy_stats');
+    return saved ? JSON.parse(saved) : { totalPoints: 0, streak: 0, unlockedBadges: [] };
+  });
+  const [badges, setBadges] = useState<Badge[]>(() => {
+    return INITIAL_BADGES.map(b => ({
+      ...b,
+      unlocked: stats.unlockedBadges.includes(b.id)
+    }));
+  });
+
+  useEffect(() => {
+    localStorage.setItem('focusbuddy_stats', JSON.stringify(stats));
+    setBadges(prev => prev.map(b => ({ ...b, unlocked: stats.unlockedBadges.includes(b.id) })));
+  }, [stats]);
 
   const chartData = [
     { day: 'Mon', mins: 45 }, { day: 'Tue', mins: 30 }, { day: 'Wed', mins: 60 },
@@ -58,7 +87,6 @@ const App: React.FC = () => {
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'hidden' && isLocked && pomodoroPhase === 'work' && isTimerActive) {
         setDistractionCount(prev => prev + 1);
-        console.warn("Distraction detected! Stay focused on your goals.");
       }
     };
 
@@ -78,17 +106,56 @@ const App: React.FC = () => {
     };
   }, [isLocked, pomodoroPhase, isTimerActive]);
 
+  const unlockBadge = (id: string) => {
+    if (!stats.unlockedBadges.includes(id)) {
+      setStats(prev => ({
+        ...prev,
+        unlockedBadges: [...prev.unlockedBadges, id]
+      }));
+      // Optional: Add toast notification here
+    }
+  };
+
   const handleTimerComplete = useCallback(() => {
     if (pomodoroPhase === 'work') {
       const focusScore = Math.max(0, 100 - (distractionCount * 10));
-      alert(`Work session complete! Focus Score: ${focusScore}%. Distractions: ${distractionCount}`);
+      const pointsEarned = Math.floor((studyTime * (focusScore / 100)));
+      
+      // Update Stats
+      const today = new Date().toISOString().split('T')[0];
+      let newStreak = stats.streak;
+      if (stats.lastActiveDay !== today) {
+        const yesterday = new Date();
+        yesterday.setDate(yesterday.getDate() - 1);
+        const yesterdayStr = yesterday.toISOString().split('T')[0];
+        newStreak = stats.lastActiveDay === yesterdayStr ? stats.streak + 1 : 1;
+      }
+
+      setStats(prev => ({
+        ...prev,
+        totalPoints: prev.totalPoints + pointsEarned,
+        streak: newStreak,
+        lastActiveDay: today
+      }));
+
+      // Check Badges
+      unlockBadge('first_step');
+      if (distractionCount === 0) unlockBadge('focus_king');
+      if (stats.totalPoints + pointsEarned >= 100) unlockBadge('century');
+      if (newStreak >= 3) unlockBadge('streak_3');
+      if (studyTime >= 60) unlockBadge('marathon');
+      const completedTasks = tasks.filter(t => t.completed).length;
+      if (completedTasks >= 5) unlockBadge('task_master');
+
+      alert(`Session complete! Points earned: ${pointsEarned}. Streak: ${newStreak} days.`);
+      
       setPomodoroPhase('break');
       const newSession: StudySession = {
         id: Math.random().toString(),
         startTime: Date.now() - (studyTime * 60000),
         endTime: Date.now(),
         durationMinutes: studyTime,
-        tasksCompleted: tasks.filter(t => t.completed).length,
+        tasksCompleted: completedTasks,
         distractionCount: distractionCount,
         subject: "General Study"
       };
@@ -99,7 +166,7 @@ const App: React.FC = () => {
       setDistractionCount(0);
     }
     setIsTimerActive(false);
-  }, [pomodoroPhase, studyTime, tasks, distractionCount]);
+  }, [pomodoroPhase, studyTime, tasks, distractionCount, stats, tasks]);
 
   return (
     <div className="min-h-screen p-4 md:p-8 max-w-7xl mx-auto flex flex-col">
@@ -156,16 +223,18 @@ const App: React.FC = () => {
                 <div className="flex flex-col md:flex-row justify-between items-start md:items-center space-y-4 md:space-y-0">
                   <div>
                     <h2 className="text-3xl font-bold mb-2">Welcome back, Scholar.</h2>
-                    <p className="text-slate-400">You've completed <span className="text-blue-400 font-bold">{sessions.length || 12} sessions</span> this week.</p>
+                    <p className="text-slate-400">You've earned <span className="text-blue-400 font-bold">{stats.totalPoints} points</span> this journey.</p>
                   </div>
                   <div className="flex space-x-4">
-                    <div className="bg-slate-800/80 p-4 rounded-2xl border border-white/5">
-                      <p className="text-xs text-slate-500 uppercase font-bold">Total Hours</p>
-                      <p className="text-2xl font-bold">24.5h</p>
+                    <div className="bg-slate-800/80 p-4 rounded-2xl border border-white/5 text-center min-w-[100px]">
+                      <p className="text-[10px] text-slate-500 uppercase font-bold">Streak</p>
+                      <p className="text-2xl font-bold flex items-center justify-center text-orange-400">
+                        <i className="fas fa-fire mr-2"></i> {stats.streak}
+                      </p>
                     </div>
-                    <div className="bg-slate-800/80 p-4 rounded-2xl border border-white/5">
-                      <p className="text-xs text-slate-500 uppercase font-bold">Focus Score</p>
-                      <p className="text-2xl font-bold text-blue-400">92%</p>
+                    <div className="bg-slate-800/80 p-4 rounded-2xl border border-white/5 text-center min-w-[100px]">
+                      <p className="text-[10px] text-slate-500 uppercase font-bold">Level</p>
+                      <p className="text-2xl font-bold text-blue-400">{Math.floor(stats.totalPoints / 100) + 1}</p>
                     </div>
                   </div>
                 </div>
@@ -191,6 +260,8 @@ const App: React.FC = () => {
                   </ResponsiveContainer>
                 </div>
               </div>
+
+              <BadgeGallery badges={badges} />
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="glass rounded-3xl p-6">
